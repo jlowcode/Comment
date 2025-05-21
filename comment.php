@@ -11,6 +11,15 @@
 // No direct access
 defined('_JEXEC') or die('Restricted access');
 
+use Joomla\CMS\MVC\Model\BaseDatabaseModel;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Editor\Editor;
+use Joomla\CMS\Filter\InputFilter;
+use Joomla\CMS\Log\Log;
+use Joomla\CMS\Factory;
+use Joomla\CMS\Filesystem\File;
+use Joomla\CMS\HTML\HTMLHelper;
+
 // Require the abstract plugin class
 require_once COM_FABRIK_FRONTEND . '/models/plugin-form.php';
 
@@ -31,10 +40,10 @@ class FabrikTableComment extends FabTable
 
 	public function __construct(&$db)
 	{
-		parent::__construct('#__{package}_comments', 'id', $db);
+		parent::__construct('#__fabrik_comments', 'id', $db);
 	}
 }
-
+ 
 /**
  * Insert a comment plugin into the bottom of the form
  * Various different plugin systems supported
@@ -90,7 +99,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		if (is_null($this->commentsLocked))
 		{
 			$this->commentsLocked = false;
-			$lock = trim($params->get('comment_lock_element'));
+			$lock = trim($params->get('comment_lock_element',''));
 
 			if ($lock !== '')
 			{
@@ -165,7 +174,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 		FabrikHelperHTML::addPath(COM_FABRIK_BASE . 'plugins/fabrik_element/thumbs/images/', 'image', 'form', false);
 		$opts->formid = $this->formModel->getId();
-		$opts->j3 = FabrikWorker::j3();
+		$opts->j3 = true;
 		$opts->listid = $this->formModel->getListModel()->getTable()->id;
 		$opts = json_encode($opts);
 
@@ -196,7 +205,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$this->inJDb = $formModel->getListModel()->inJDb();
 		$this->formModel = $formModel;
 		$jsFiles = array();
-		JHTML::stylesheet('plugins/fabrik_form/comment/comments.css');
+		HTMLHelper::stylesheet('plugins/fabrik_form/comment/comments.css');
 		$jsFiles['Fabrik'] = 'media/com_fabrik/js/fabrik.js';
 		$jsFiles['FabrikComment'] = 'plugins/fabrik_form/comment/comments.js';
 		$jsFiles['InlineEdit'] = 'plugins/fabrik_form/comment/inlineedit.js';
@@ -245,10 +254,10 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		}
 
 		$opts = json_encode($opts);
-		JText::script('PLG_FORM_COMMENT_TYPE_A_COMMENT_HERE');
-		JText::script('PLG_FORM_COMMENT_PLEASE_ENTER_A_COMMENT_BEFORE_POSTING');
-		JText::script('PLG_FORM_COMMENT_PLEASE_ENTER_A_NAME_BEFORE_POSTING');
-		JText::script('PLG_FORM_COMMENT_ENTER_EMAIL_BEFORE_POSTNG');
+		Text::script('PLG_FORM_COMMENT_TYPE_A_COMMENT_HERE');
+		Text::script('PLG_FORM_COMMENT_PLEASE_ENTER_A_COMMENT_BEFORE_POSTING');
+		Text::script('PLG_FORM_COMMENT_PLEASE_ENTER_A_NAME_BEFORE_POSTING');
+		Text::script('PLG_FORM_COMMENT_ENTER_EMAIL_BEFORE_POSTNG');
 		$script = "var comments = new FabrikComment('fabrik-comments', $opts);";
 
 		if ($this->doThumbs())
@@ -310,7 +319,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 			$cols = $params->get('comment_internal_wysiwyg_cols', '100');
 			$rows = $params->get('comment_internal_wysiwyg_rows', '5');
 			$layoutData->id = 'fabrik_form_comment_' . $layoutData->renderOrder . '_' . $reply_to;
-			$editor = JEditor::getInstance($this->config->get('editor'));
+			$editor = Editor::getInstance($this->config->get('editor'));
 			$buttons = (bool) $params->get('comment_internal_wysiwyg_extra_buttons', false);
 			$layoutData->editor = $editor->display($layoutData->id, '', '100%', '100%', $cols, $rows, $buttons, $layoutData->id);
 		}
@@ -337,7 +346,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$formModel = $this->setFormModel();
 		$query = $db->getQuery(true);
 		$query->select('c.*');
-		$query->from('#__{package}_comments AS c');
+		$query->from('#__fabrik_comments AS c');
 		$this->inJDb = $formModel->getListModel()->inJDb();
 
 		if ($this->inJDb)
@@ -448,7 +457,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$input = $this->app->input;
 		$layoutData = new stdClass;
 		$layoutData->insrc = FabrikHelperHTML::image("star_in.png", 'form', @$this->tmpl, array(), true);
-		$layoutData->name = (int) $comment->annonymous == 0 ? $comment->name : FText::_('PLG_FORM_COMMENT_ANONYMOUS_SHORT');
+		$layoutData->name = (int) $comment->annonymous == 0 ? $comment->name : Text::_('PLG_FORM_COMMENT_ANONYMOUS_SHORT');
 		$layoutData->comment = $comment;
 		$layoutData->dateFormat = $params->get('comment-date-format');
 		$layoutData->internalRating = $params->get('comment-internal-rating') == 1;
@@ -456,7 +465,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$layoutData->canAdd = !$this->commentsLocked && $this->canAddComment();
 		$layoutData->commentsLocked = $this->commentsLocked;
 		$layoutData->form = $this->getAddCommentForm($comment->id);
-		$layoutData->j3 = FabrikWorker::j3();
+		$layoutData->j3 = true;
 
 		if ($this->doThumbs())
 		{
@@ -518,7 +527,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$db = FabrikWorker::getDbo();
 		$id = $this->app->input->getInt('comment_id');
 		$query = $db->getQuery(true);
-		$query->delete('#__{package}_comments')->where('id =' . $id);
+		$query->delete('#__fabrik_comments')->where('id =' . $id);
 		$db->setQuery($query);
 		$db->execute();
 		echo $id;
@@ -536,7 +545,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$id = $input->getInt('comment_id');
 		$comment = $db->q($input->get('comment', '', 'string'));
 		$query = $db->getQuery(true);
-		$query->update('#__{package}_comments')->set('comment = ' . $comment)->where('id = ' . $id);
+		$query->update('#__fabrik_comments')->set('comment = ' . $comment)->where('id = ' . $id);
 		$db->setQuery($query);
 		$db->execute();
 	}
@@ -549,7 +558,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 	private function setFormModel()
 	{
 		$input = $this->app->input;
-		$formModel = JModelLegacy::getInstance('form', 'FabrikFEModel');
+		$formModel = BaseDatabaseModel::getInstance('form', 'FabrikFEModel');
 		$formModel->setId($input->getInt('formid'));
 		$this->model = $formModel;
 
@@ -563,9 +572,13 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 	 */
 	public function onAddComment()
 	{
+		
+		/* Fix the table if required */
+		$this->fixTable();
+
 		$input = $this->app->input;
 		$row = FabTable::getInstance('comment', 'FabrikTable');
-		$filter = JFilterInput::getInstance();
+		$filter = InputFilter::getInstance();
 		$request = $filter->clean($_REQUEST, 'array');
 
 		foreach ($request as $k => $v)
@@ -616,7 +629,6 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$obj->depth = (int) $row->depth;
 		$obj->id = $row->id;
 		$notificationPlugin = $this->useNotificationPlugin();
-		$this->fixTable();
 
 		if ($notificationPlugin)
 		{
@@ -644,15 +656,19 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 	 */
 	private function fixTable()
 	{
-		$table = FabTable::getInstance('Comment', 'FabrikTable');
-		$columns = $table->getFields();
+		$db = FabrikWorker::getDbo();
+		$query = $db->getQuery(true);
+		$columns = $db->getTableColumns("#__fabrik_comments", false);
 
 		if (!array_key_exists('notify', $columns))
 		{
-			$query = 'ALTER TABLE `#__fabrik_comments` ADD `notify` TINYINT(1) NOT NULL;';
-			$this->_db->setQuery($query)
-				->execute();
-
+			$query = 'ALTER TABLE #__fabrik_comments ADD notify TINYINT(1) NOT NULL DEFAULT 0;';
+			$db->setQuery($query)->execute();
+		} elseif (property_exists($columns['notify'], 'default') === false 
+			|| ($columns['notify']->default !== 0 && empty($columns['notify']->default))) 
+		{
+			$query = 'ALTER TABLE #__fabrik_comments ALTER COLUMN notify SET DEFAULT 0;';
+			$db->setQuery($query)->execute();
 		}
 	}
 
@@ -674,7 +690,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$ref = $db->q($formModel->getlistModel()->getTable()->id . '.' . $formModel->get('id') . '.' . $rowId);
 		$date = $db->q($this->date->toSql());
 		$query = $db->getQuery(true);
-		$query->insert('#__{package}_notification_event')
+		$query->insert('#__fabrik_notification_event')
 			->set(array('event = ' . $event, 'user_id = ' . $userId, 'reference = ' . $ref, 'date_time = ' . $date));
 		$db->setQuery($query);
 
@@ -684,7 +700,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		}
 		catch (RuntimeException $e)
 		{
-			JLog::add('Couldn\'t save fabrik comment notification event: ' + $db->stderr(true), JLog::WARNING, 'fabrik');
+			Log::add('Couldn\'t save fabrik comment notification event: ' + $db->stderr(true), Log::WARNING, 'fabrik');
 
 			return false;
 		}
@@ -717,7 +733,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 		if ((int) $params->get('comment-internal-notify') == 1 && $shouldSubscribe)
 		{
-			$query->insert('#__{package}_notification')
+			$query->insert('#__fabrik_notification')
 				->set(array('reason = ' . $db->q('commentor'), 'user_id = ' . $userId, 'reference = ' . $ref, 'label = ' . $label));
 			$db->setQuery($query);
 
@@ -727,7 +743,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 			}
 			catch (RuntimeException $e)
 			{
-				JLog::add('Couldn\'t save fabrik comment notification: ' + $db->stderr(true), JLog::WARNING, 'fabrik');
+				Log::add('Couldn\'t save fabrik comment notification: ' + $db->stderr(true), Log::WARNING, 'fabrik');
 
 				return false;
 			}
@@ -748,7 +764,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 				if (is_numeric($userId))
 				{
-					$query->clear->insert('#__{package}_notification')
+					$query->clear->insert('#__fabrik_notification')
 						->set(array('reason = ' . $db->q('owner'), 'user_id = ' . $userId, 'reference = ' . $ref, 'label = ' . $label));
 					$db->setQuery($query);
 
@@ -758,7 +774,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 					}
 					catch (RuntimeException $e)
 					{
-						JLog::add('Couldn\'t save fabrik comment notification: ' + $db->stderr(true), JLog::WARNING, 'fabrik');
+						Log::add('Couldn\'t save fabrik comment notification: ' + $db->stderr(true), Log::WARNING, 'fabrik');
 
 						return false;
 					}
@@ -777,7 +793,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 					$query->clear();
 					$fields = array('reason = ' . $db->quote('admin observing a comment'), 'user_id = ' . $row->id, 'reference = ' . $ref,
 						'label = ' . $label);
-					$query->insert('#__{package}_notification')->set($fields);
+					$query->insert('#__fabrik_notification')->set($fields);
 					$db->setQuery($query);
 
 					try
@@ -786,7 +802,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 					}
 					catch (RuntimeException $e)
 					{
-						JLog::add('Couldn\'t save fabrik comment notification for admin: ' + $db->stderr(true), JLog::WARNING, 'fabrik');
+						Log::add('Couldn\'t save fabrik comment notification for admin: ' + $db->stderr(true), Log::WARNING, 'fabrik');
 					}
 				}
 			}
@@ -841,7 +857,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$formModel = $this->getModel();
 		$params = $this->getParams();
 		$sentTo = array();
-		$title = FText::_('PLG_FORM_COMMENT_NEW_COMMENT_ADDED_TITLE');
+		$title = Text::_('PLG_FORM_COMMENT_NEW_COMMENT_ADDED_TITLE');
 
 		$layoutData = new stdClass;
 		$layoutData->row = $row;
@@ -849,7 +865,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$layout = $this->getLayout('emailnotification');
 		$message = $layout->render($layoutData);
 
-		$mail = JFactory::getMailer();
+		$mail = Factory::getMailer();
 
 		if ((int) $params->get('comment-internal-notify') == 1)
 		{
@@ -888,7 +904,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 				if (is_numeric($ownerEmail))
 				{
-					$ownerUser = JFactory::getUser((int)$rowData->$owner);
+					$ownerUser = Factory::getUser((int)$rowData->$owner);
 					$ownerEmail = $ownerUser->get('email');
 				}
 
@@ -1002,17 +1018,17 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		 * components/com_jcomments/languages/yourfile.ini to
 		 * components/com_jcomments/language/xx-XX/yourfile.ini
 		 */
-		$lang = JFactory::getLanguage();
+		$lang = Factory::getApplication()->getLanguage();
 		$lang->load('com_jcomments', JPATH_BASE . '/components/com_jcomments');
 		$jComments = JPATH_SITE . '/components/com_jcomments/jcomments.php';
 
-		if (JFile::exists($jComments))
+		if (File::exists($jComments))
 		{
 			require_once $jComments;
 
 			if ($this->commentsLocked)
 			{
-				$jc_config = JCommentsFactory::getConfig();
+				$jc_config = JCommentsFactory::getApplication()->getConfig();
 				$jc_config->set('comments_locked', 1);
 			}
 
@@ -1085,5 +1101,71 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 		require_once JPATH_PLUGINS . '/fabrik_form/comment/helpers/jcomments.php';
 		FabrikJCommentHelper::subscribe($this);
+	}
+	
+	/**
+	 * Render the element admin settings
+	 *
+	 * @param   array   $data           admin data
+	 * @param   int     $repeatCounter  repeat plugin counter
+	 * @param   string  $mode           how the fieldsets should be rendered currently support 'nav-tabs' (@since 3.1)
+	 *
+	 * @return  string	admin html
+	 */
+	public function onRenderAdminSettings($data = array(), $repeatCounter = null, $mode = null)
+	{
+		$this->install();
+
+		return parent::onRenderAdminSettings($data, $repeatCounter, $mode);
+	}
+
+	/**
+	 * Install the plugin db tables
+	 *
+	 * @return  void
+	 */
+	public function install()
+	{
+		$db = FabrikWorker::getDbo();
+		/* The table */
+		$sql = "CREATE TABLE IF NOT EXISTS `#__fabrik_comments` (
+			`id` INT( 11 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+			`user_id` INT( 11 ) NOT NULL DEFAULT 0 ,
+			`ipaddress` CHAR( 14 ) NOT NULL DEFAULT '' ,
+			`reply_to` INT( 11 ) NOT NULL DEFAULT 0 ,
+			`comment` MEDIUMTEXT ,
+			`approved` TINYINT( 1 ) NOT NULL DEFAULT 0 ,
+			`time_date` TIMESTAMP NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+			`url` varchar( 255 ) NOT NULL DEFAULT '' ,
+			`name` VARCHAR( 150 ) NOT NULL DEFAULT '' ,
+			`email` VARCHAR( 100 ) NOT NULL DEFAULT '' ,
+			`formid` INT( 6 ) NOT NULL DEFAULT 0,
+			`row_id` INT( 6 ) NOT NULL DEFAULT 0,
+			`rating` CHAR(2) NOT NULL DEFAULT '',
+			`annonymous` TINYINT(1) NOT NULL DEFAULT 0,
+			`notify` TINYINT(1) NOT NULL DEFAULT 0,
+			`diggs` INT( 6 ) NOT NULL DEFAULT 0);";
+		$db->setQuery($sql)->execute();
+		
+		/* Update existing tables */
+		$sqls = [
+			"ALTER TABLE `#__fabrik_comments` ALTER `user_id` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `ipaddress` SET DEFAULT '';",
+			"ALTER TABLE `#__fabrik_comments` ALTER `reply_to` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `approved` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `url` SET DEFAULT '';",
+			"ALTER TABLE `#__fabrik_comments` ALTER `name` SET DEFAULT '';",
+			"ALTER TABLE `#__fabrik_comments` ALTER `email` SET DEFAULT '';",
+			"ALTER TABLE `#__fabrik_comments` ALTER `formid` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `row_id` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `rating` SET DEFAULT '';",
+			"ALTER TABLE `#__fabrik_comments` ALTER `annonymous` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` ALTER `diggs` SET DEFAULT 0;",
+			"ALTER TABLE `#__fabrik_comments` MODIFY `time_date` TIMESTAMP NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp();",
+			"UPDATE `#__fabrik_comments` SET `time_date` = '1980-01-01 00:00:00' WHERE `time_date` < '1000-01-01' OR `time_date` IS NULL;",
+		];
+		foreach ($sqls as $sql) {
+			$db->setQuery($sql)->execute();
+		}
 	}
 }
