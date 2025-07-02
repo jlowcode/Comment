@@ -126,6 +126,11 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$formModel = $this->getModel();
 		$rowId = $formModel->getRowId();
 
+		if (!$formModel->isEditable())
+		{
+			return;
+		}
+
 		if ($rowId == '')
 		{
 			return;
