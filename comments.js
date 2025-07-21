@@ -302,7 +302,7 @@ define(['jquery', 'fab/fabrik'], function (jQuery, Fabrik) {
 			this.element.getElements('.comment-content').each(function (a) {
 				var id = a.getParent('.comment').id.replace('comment-', '');
 				var dataComment = JSON.parse(this.options.comments)[id];
-				var canEdit = dataComment.canEdit === undefined ? true : dataComment.canEdit;
+				var canEdit = (dataComment === undefined || dataComment.canEdit === undefined) ? true : dataComment.canEdit;
 
 				// if admin watch inline edit and user is allowed to edit
 				if (this.options.admin || canEdit) {
