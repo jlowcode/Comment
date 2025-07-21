@@ -297,10 +297,15 @@ define(['jquery', 'fab/fabrik'], function (jQuery, Fabrik) {
 					e.stop();
 				}.bind(this));
 			}.bind(this));
-			// if admin watch inline edit
-			if (this.options.admin) {
+			
 
-				this.element.getElements('.comment-content').each(function (a) {
+			this.element.getElements('.comment-content').each(function (a) {
+				var id = a.getParent('.comment').id.replace('comment-', '');
+				var dataComment = JSON.parse(this.options.comments)[id];
+				var canEdit = (dataComment === undefined || dataComment.canEdit === undefined) ? true : dataComment.canEdit;
+
+				// if admin watch inline edit and user is allowed to edit
+				if (this.options.admin || canEdit) {
 					a.removeEvents();
 					a.addEvent('click', function (e) {
 						a.inlineEdit({
@@ -335,9 +340,9 @@ define(['jquery', 'fab/fabrik'], function (jQuery, Fabrik) {
 						}).send();
 
 						e.stop();
-					}.bind(this));
-				}.bind(this));
-			}
+					}.bind(this));   
+				}
+			}.bind(this));
 		},
 
 		deleteComplete: function (r) {
