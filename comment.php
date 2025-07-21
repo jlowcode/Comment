@@ -248,6 +248,7 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 		$opts->admin = $this->user->authorise('core.delete', 'com_fabrik');
 		$opts->label = '';
 		$opts->wysiwyg = $this->isWYSIWYG();
+		$opts->comments = json_encode($comments);
 
 		foreach ($formModel->data as $k => $v)
 		{
@@ -372,6 +373,8 @@ class PlgFabrik_FormComment extends PlgFabrik_Form
 
 		foreach ($rows as $row)
 		{
+			$row->canEdit = $row->user_id == $this->user->get('id');
+
 			if ($row->reply_to == 0)
 			{
 				$main[$row->id] = $row;
